@@ -1,3 +1,5 @@
+import paho.mqtt.client as mqtt
+
 
 import RPi.GPIO as GPIO
 import cv2 as cv
@@ -6,6 +8,13 @@ import numpy as np
 import pygame
 import time
 import vlc
+GPIO.setwarnings(False)
+# MQTT broker details
+broker = "localhost"
+port = 1883
+username = "pi"
+password = "12345678s"
+GPIO27last=0
 
 
 GPIO.setmode(GPIO.BCM)   ##define PINS Mode 
@@ -15,13 +24,19 @@ GPIO_ECHO = 24            ##define the ECHO  pin
 GPIO.setup(GPIO_TRIGGER, GPIO.OUT)        #define OUTPUT PIN
 GPIO.setup(GPIO_ECHO, GPIO.IN)            #define INPUT  PIN
 
+GPIO_FAN_ON   =  2
+GPIO_FAN_OFF  =  3
 
-GPIO_object = 17
-GPIO_read   = 27
-GPIO_read1  = 22
+GPIO_object   = 17
+GPIO_LED_ON   = 27
+GPIO_LED_OFF  = 22
+
+GPIO.setup(GPIO_FAN_ON,GPIO.IN)                    #define INPUT  PIN
+GPIO.setup(GPIO_FAN_OFF,GPIO.IN)                    #define INPUT  PIN
+
 GPIO.setup(GPIO_object,GPIO.IN)                    #define INPUT  PIN
-GPIO.setup(GPIO_read,GPIO.IN)
-GPIO.setup(GPIO_read1,GPIO.IN)
+GPIO.setup(GPIO_LED_ON,GPIO.IN)
+GPIO.setup(GPIO_LED_OFF,GPIO.IN)
 
 
 def alert():
@@ -73,7 +88,7 @@ def alert_cup():
     p.play() 
     p.pause() 
     vlc.libvlc_audio_set_volume(p, 200)
-def alert_cup():
+def alert_book():
     instance = vlc.Instance('--aout=alsa')
     p = instance.media_player_new()
     m = instance.media_new('soundb/book.mp3') 
@@ -182,7 +197,8 @@ def beep_freq():
     return 0
 
 while True:
-    while(GPIO.input(17)==False):
+    print ("hello");
+    if(GPIO.input(17)==False):
         
             cap = cv.VideoCapture(0)
             whT = 320
@@ -204,36 +220,38 @@ while True:
             net.setPreferableTarget(cv.dnn.DNN_TARGET_CPU)
             
             while(GPIO.input(17)==False):
+                for i in range(1,5):
+                        
 
-            
-                success, img = cap.read()
-                blob = cv.dnn.blobFromImage(img, 1 / 255, (whT, whT), [0, 0, 0], 1, crop=False)
-                net.setInput(blob)
-                layersNames = net.getLayerNames()
-                outputNames = [(layersNames[i - 1]) for i in net.getUnconnectedOutLayers()]
-                outputs = net.forward(outputNames)
-                findObjects(outputs,img)
-                dist = distance()
-                print ("Measured Distance = %.1f cm" % dist)
-                freq = beep_freq()
-                # No beeping
-                if freq == -1:
-                    print('no signal')
-                    time.sleep(0.25)
-                    # Constant beeping
-                elif freq == 0:
-                    alert()
-                    time.sleep(0.25)
-                    # Beeping on certain frequency
-                else:
-                    alert()
-                    time.sleep(0.2) # Beep is 0.2 seconds long
-                    print('3')
-                    time.sleep(freq) # Pause between beeps = beeping frequency
-                cv.imshow('Image', img)
-                cv.waitKey(1)
-                if cv.waitKey(1) & 0xFF == ord('q'):
-                    break
+                
+                    success, img = cap.read()
+                    blob = cv.dnn.blobFromImage(img, 1 / 255, (whT, whT), [0, 0, 0], 1, crop=False)
+                    net.setInput(blob)
+                    layersNames = net.getLayerNames()
+                    outputNames = [(layersNames[i - 1]) for i in net.getUnconnectedOutLayers()]
+                    outputs = net.forward(outputNames)
+                    findObjects(outputs,img)
+                    dist = distance()
+                    print ("Measured Distance = %.1f cm" % dist)
+                    freq = beep_freq()
+                    # No beeping
+                    if freq == -1:
+                        print('no signal')
+                        time.sleep(0.25)
+                        # Constant beeping
+                    elif freq == 0:
+                        alert()
+                        time.sleep(0.25)
+                        # Beeping on certain frequency
+                    else:
+                        alert()
+                        time.sleep(0.2) # Beep is 0.2 seconds long
+                        print('3')
+                        time.sleep(freq) # Pause between beeps = beeping frequency
+                    cv.imshow('Image', img)
+                    cv.waitKey(1)
+                    if cv.waitKey(1) & 0xFF == ord('q'):
+                        break
                 
                 # Release handle to the webcam
         
@@ -242,8 +260,69 @@ while True:
 
         
     if(GPIO.input(27)==False):
-            print("hello")
-    elif(GPIO.input(22)==False):
-            print("bye")
-    time.sleep(2)
+        # Create a MQTT client
+        
+       
+        client = mqtt.Client()
+
+        # Connect to the broker
+        client.username_pw_set(username, password)
+        client.connect(broker, port)
+
+        # Publish a message
+        topic = "LED"
+        message = "LED ON"
+        client.publish(topic, message)
+
+        # Disconnect from the broker
+        client.disconnect()
+    if(GPIO.input(22)==False):
+        client = mqtt.Client()
+
+        # Connect to the broker
+        client.username_pw_set(username, password)
+        client.connect(broker, port)
+
+        # Publish a message
+        topic = "LED"
+        message = "LED OFF"
+        client.publish(topic, message)
+
+        # Disconnect from the broker
+        client.disconnect()
+        
+    if(GPIO.input(2)==False):
+        client = mqtt.Client()
+
+        # Connect to the broker
+        client.username_pw_set(username, password)
+        client.connect(broker, port)
+
+        # Publish a message
+        topic = "FAN"
+        message = "FAN ON"
+        client.publish(topic, message)
+
+        # Disconnect from the broker
+        client.disconnect()
+        
+    if(GPIO.input(3)==False):
+        client = mqtt.Client()
+
+        # Connect to the broker
+        client.username_pw_set(username, password)
+        client.connect(broker, port)
+
+        # Publish a message
+        topic = "FAN"
+        message = "FAN OFF"
+        client.publish(topic, message)
+
+        # Disconnect from the broker
+        client.disconnect()
+        
+        
+        
+        
+    time.sleep(5)
 

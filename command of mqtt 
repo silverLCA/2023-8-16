@@ -1,0 +1,27 @@
+sudo apt install -y mosquitto mosquitto-clients 
+
+
+sudo systemctl enable mosquitto.service
+
+mosquitto -v
+
+mosquitto -d
+
+mosquitto_sub -d  -t hier
+
+mosquitto_sub -d  -t hier -u pi -P 12345678s
+
+
+mosquitto_pub -h localhost -t "hier" -m "Hello world"
+
+mosquitto_passwd  -c passwordfile pi
+hello
+
+
+
+hostname -I
+
+mosquitto_sub -h localhost -t "hier"
+
+mosquitto_pub -h localhost -t "hier" -m "Hello world"
+ 
